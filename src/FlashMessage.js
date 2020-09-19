@@ -267,7 +267,7 @@ export default class FlashMessage extends Component {
     /**
      * Controls if the flash message can be closed on press
      */
-    hideOnPress: true,
+    hideOnPress: false,
     /**
      * `onPress` callback for flash message press
      */
