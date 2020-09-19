@@ -29,7 +29,7 @@ const MessagePropType = PropTypes.shape({
 /**
  * Non-operation func
  */
-const noop = () => {};
+const noop = () => { };
 
 /**
  * Simple random ID for internal FlashMessage component usage
@@ -157,6 +157,10 @@ export const renderFlashMessageIcon = (icon = "success", style = {}, customProps
       return (
         <Image style={[styles.flashIcon, style]} source={require("./icons/fm_icon_danger.png")} {...customProps} />
       );
+    case "close":
+      return (
+        <Image style={[styles.flashIcon, style]} source={require("./icons/icon_close.png")} {...customProps} />
+      );
     default:
       return null;
   }
@@ -172,24 +176,21 @@ export const DefaultFlash = ({
   style,
   textStyle,
   titleStyle,
-  titleProps,
   renderFlashMessageIcon,
   position = "top",
   renderCustomContent,
-  floating = false,
+  floating = true,
   icon,
   hideStatusBar = false,
+  onClosePress,
   ...props
 }) => {
   const hasDescription = !!message.description && message.description !== "";
   const iconView =
     !!icon &&
     !!icon.icon &&
-    renderFlashMessageIcon(icon.icon === "auto" ? message.type : icon.icon, [
-      icon.position === "left" && styles.flashIconLeft,
-      icon.position === "right" && styles.flashIconRight,
-      icon.style,
-    ]);
+    renderFlashMessageIcon(icon.icon === "auto" ? message.type : icon.icon, icon.style);
+  const iconCloseView = renderFlashMessageIcon('close', styles.flashIconRight);
   const hasIcon = !!iconView;
 
   return (
@@ -201,13 +202,6 @@ export const DefaultFlash = ({
               styles.defaultFlash,
               position === "center" && styles.defaultFlashCenter,
               position !== "center" && floating && styles.defaultFlashFloating,
-              hasIcon && styles.defaultFlashWithIcon,
-              !!message.backgroundColor
-                ? { backgroundColor: message.backgroundColor }
-                : !!message.type &&
-                  !!FlashMessage.ColorTheme[message.type] && {
-                    backgroundColor: FlashMessage.ColorTheme[message.type],
-                  },
               style,
             ],
             wrapperInset,
@@ -215,7 +209,9 @@ export const DefaultFlash = ({
             position !== "center" && floating ? "margin" : "padding"
           )}
           {...props}>
-          {hasIcon && icon.position === "left" && iconView}
+          <View style={hasIcon && icon.position === "left" && [styles.flashIconContainer, { backgroundColor: FlashMessage.ColorTheme[message.type] }]}>
+            {hasIcon && icon.position === "left" && iconView}
+          </View>
           <View style={styles.flashLabel}>
             <Text
               style={[
@@ -223,8 +219,7 @@ export const DefaultFlash = ({
                 hasDescription && styles.flashTitle,
                 !!message.color && { color: message.color },
                 titleStyle,
-              ]}
-              {...titleProps}>
+              ]}>
               {message.message}
             </Text>
             {!!renderCustomContent && renderCustomContent(message)}
@@ -234,7 +229,11 @@ export const DefaultFlash = ({
               </Text>
             )}
           </View>
-          {hasIcon && icon.position === "right" && iconView}
+          <TouchableWithoutFeedback onPress={() => onClosePress()}>
+            <View style={styles.flashIconContainer}>
+              {iconCloseView}
+            </View>
+          </TouchableWithoutFeedback>
         </View>
       )}
     </FlashMessageWrapper>
@@ -301,7 +300,7 @@ export default class FlashMessage extends Component {
     /**
      * The `floating` prop unstick the message from the edges and applying some border radius to component
      */
-    floating: false,
+    floating: true,
     /**
      * The `position` prop set the position of a flash message
      * Expected options: "top" (default), "bottom", "center" or a custom object with { top, left, right, bottom } position
@@ -358,7 +357,7 @@ export default class FlashMessage extends Component {
     success: "#5cb85c",
     info: "#5bc0de",
     warning: "#f0ad4e",
-    danger: "#d9534f",
+    danger: "#DC4343",
   };
   static setColorTheme = theme => {
     FlashMessage.ColorTheme = Object.assign(FlashMessage.ColorTheme, theme);
@@ -368,7 +367,6 @@ export default class FlashMessage extends Component {
 
     this.prop = this.prop.bind(this);
     this.pressMessage = this.pressMessage.bind(this);
-    this.longPressMessage = this.longPressMessage.bind(this);
     this.toggleVisibility = this.toggleVisibility.bind(this);
     if (!this._id) this._id = srid();
 
@@ -415,24 +413,6 @@ export default class FlashMessage extends Component {
 
       if (typeof onPress === "function") {
         onPress(event, message);
-      }
-    }
-  }
-  /**
-   * Non-public method
-   */
-  longPressMessage(event) {
-    if (!this.state.isHidding) {
-      const { message } = this.state;
-      const hideOnPress = this.prop(message, "hideOnPress");
-      const onLongPress = this.prop(message, "onLongPress");
-
-      if (hideOnPress) {
-        this.hideMessage();
-      }
-
-      if (typeof onLongPress === "function") {
-        onLongPress(event, message);
       }
     }
   }
@@ -557,7 +537,6 @@ export default class FlashMessage extends Component {
     const style = this.prop(message, "style");
     const textStyle = this.prop(message, "textStyle");
     const titleStyle = this.prop(message, "titleStyle");
-    const titleProps = this.prop(message, "titleProps");
     const floating = this.prop(message, "floating");
     const position = this.prop(message, "position");
     const icon = parseIcon(this.prop(message, "icon"));
@@ -574,7 +553,7 @@ export default class FlashMessage extends Component {
           animStyle,
         ]}>
         {!!message && (
-          <TouchableWithoutFeedback onPress={this.pressMessage} onLongPress={this.longPressMessage} accessible={false} >
+          <TouchableWithoutFeedback accessible={false}>
             <MessageComponent
               position={position}
               floating={floating}
@@ -586,7 +565,7 @@ export default class FlashMessage extends Component {
               style={style}
               textStyle={textStyle}
               titleStyle={titleStyle}
-              titleProps={titleProps}
+              onClosePress={this.pressMessage}
             />
           </TouchableWithoutFeedback>
         )}
@@ -621,10 +600,9 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   defaultFlash: {
+    flexDirection: 'row',
     justifyContent: "flex-start",
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    backgroundColor: "#696969",
+    backgroundColor: "#FDFDFD",
     minHeight: OFFSET_HEIGHT,
   },
   defaultFlashCenter: {
@@ -638,36 +616,39 @@ const styles = StyleSheet.create({
     marginRight: 12,
     marginBottom: 10,
     borderRadius: 8,
+    elevation: 5,
     minHeight: OFFSET_HEIGHT - getStatusBarHeight(),
   },
-  defaultFlashWithIcon: {
-    flexDirection: "row",
-  },
   flashLabel: {
+    flex: 5,
     flexDirection: "column",
+    padding: 15,
   },
   flashText: {
     fontSize: 14,
     lineHeight: 18,
-    color: "#fff",
+    color: "#303030",
   },
   flashTitle: {
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 5,
   },
+  flashIconContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
+  },
   flashIcon: {
     tintColor: "#fff",
-    marginTop: -1,
     width: 21,
     height: 21,
   },
-  flashIconLeft: {
-    marginLeft: -6,
-    marginRight: 9,
-  },
   flashIconRight: {
-    marginRight: -6,
-    marginLeft: 9,
+    tintColor: "#909090",
+    width: 15,
+    height: 15,
   },
 });
